@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jemery L. · LLM Post-Training</title>
+<meta name="description" content="Jemery L., ML engineer for LLM post-training: SFT, LoRA, reward models, GRPO, DPO, evaluation sets and optimization.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: a single reading column styled like a training log. Every claim carries a before → after delta. */
+:root{
+  --paper:#F4F5F2;
+  --ink:#16181C;
+  --muted:#5D636B;
+  --rule:#D9DCD6;
+  --accent:#2747D9;
+  --accent-soft:#E3E8FB;
+  --panel:#FFFFFF;
+  --display:"Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+  --body:"IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#111317; --ink:#ECEEF0; --muted:#9AA1AA; --rule:#2A2E35;
+    --accent:#8FA6FF; --accent-soft:#1D2440; --panel:#171A1F; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#111317; --ink:#ECEEF0; --muted:#9AA1AA; --rule:#2A2E35;
+  --accent:#8FA6FF; --accent-soft:#1D2440; --panel:#171A1F; color-scheme: dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 16px/1.6 var(--body)}
+a{color:var(--accent);text-underline-offset:3px}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:2px}
+.wrap{max-width:860px;margin:0 auto;padding:56px 20px 72px;display:grid;gap:64px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+header{display:grid;gap:20px}
+.tag{font:500 13px/1 var(--mono);color:var(--muted);letter-spacing:.02em}
+h1{font:800 clamp(40px,7.5vw,76px)/.98 var(--display);letter-spacing:-.02em;margin:0;text-wrap:balance}
+h1 .soft{color:var(--muted);font-weight:500}
+.lede{font-size:clamp(17px,2.2vw,19px);max-width:62ch;margin:0}
+.meta{display:flex;flex-wrap:wrap;gap:10px 22px;font:400 14px/1.4 var(--mono);color:var(--muted)}
+.cta{display:flex;flex-wrap:wrap;gap:12px}
+.btn{display:inline-block;padding:11px 18px;border-radius:6px;font:600 15px/1 var(--body);text-decoration:none;border:1px solid var(--accent)}
+.btn.primary{background:var(--accent);color:var(--paper)}
+.btn.ghost{color:var(--accent)}
+
+h2{font:700 13px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 20px;padding-bottom:12px;border-bottom:1px solid var(--rule)}
+
+/* results log */
+.log{display:grid;gap:0}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 24px;padding:18px 0;border-bottom:1px solid var(--rule);align-items:baseline}
+.row h3{font:600 17px/1.35 var(--body);margin:0}
+.row p{grid-column:1/-1;margin:0;color:var(--muted);font-size:15px;max-width:66ch}
+.delta{font:500 15px/1.2 var(--mono);white-space:nowrap;color:var(--ink)}
+.delta b{color:var(--accent);font-weight:500}
+.where{font:400 12px/1 var(--mono);color:var(--muted);display:block;margin-bottom:6px;letter-spacing:.03em}
+
+/* case study */
+.case{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:24px;display:grid;gap:18px}
+.case h3{font:700 clamp(22px,3.4vw,28px)/1.15 var(--display);margin:0;text-wrap:balance}
+.case p{margin:0;max-width:66ch}
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px}
+figure{margin:0;display:grid;gap:8px}
+figcaption{font:400 13px/1.4 var(--mono);color:var(--muted)}
+figcaption b{color:var(--ink);font-weight:500}
+svg{width:100%;height:auto;display:block;overflow:visible}
+.specs{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font:400 12.5px/1 var(--mono);padding:7px 10px;border-radius:999px;background:var(--accent-soft);color:var(--ink)}
+
+/* experience */
+.xp{display:grid;gap:22px}
+.job{display:grid;grid-template-columns:150px minmax(0,1fr);gap:4px 24px}
+.job .when{font:400 13px/1.6 var(--mono);color:var(--muted)}
+.job h3{font:600 17px/1.35 var(--body);margin:0}
+.job ul{margin:6px 0 0;padding-left:18px;color:var(--muted);font-size:15px;max-width:64ch}
+.job li{margin:3px 0}
+
+.cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px}
+@media (max-width:560px){.cols{grid-template-columns:1fr}}
+.cols h3{font:600 15px/1.3 var(--body);margin:0 0 8px}
+.cols p{margin:0;color:var(--muted);font-size:15px}
+
+footer{display:grid;gap:14px;padding-top:28px;border-top:1px solid var(--rule)}
+footer p{margin:0;max-width:62ch}
+.small{font:400 13px/1.5 var(--mono);color:var(--muted)}
+
+@media (max-width:560px){
+  .wrap{padding:40px 16px 56px;gap:52px}
+  .row{grid-template-columns:1fr}
+  .job{grid-template-columns:1fr}
+  .case{padding:18px}
+}
+@media (prefers-reduced-motion: no-preference){
+  .line{stroke-dasharray:var(--len);stroke-dashoffset:var(--len);animation:draw 1.6s ease-out .2s forwards}
+  @keyframes draw{to{stroke-dashoffset:0}}
+}
+</style>
+</head>
+<body>
+<main class="wrap">
+
+<header>
+  <span class="tag">ML engineer · LLM post-training · Beijing, UTC+8</span>
+  <h1>Jemery L.<br><span class="soft">I train language models and measure what changed.</span></h1>
+  <p class="lede">SFT, LoRA, reward models, GRPO and DPO on open-weight models such as Qwen and Llama, plus agents, evaluation sets and classic optimization work. I start every project by agreeing on the metric and a held-out test set, and I finish with numbers and reproducible code.</p>
+  <div class="meta"><span>MS Computer Science</span><span>Baidu · ByteDance · iFlytek · KONE</span><span>arXiv:2601.01627</span></div>
+  <div class="cta">
+    <a class="btn primary" href="https://www.upwork.com/freelancers/~015a8fe6ea6c76725c">Hire me on Upwork</a>
+    <a class="btn ghost" href="#grpo">See a training run</a>
+  </div>
+</header>
+
+<section aria-labelledby="results-h">
+  <h2 id="results-h">Results, before → after</h2>
+  <div class="log">
+    <div class="row">
+      <div><span class="where">iFlytek · math &amp; physics grading model</span><h3>Reasoning reward model + GRPO on ~4K real samples</h3></div>
+      <div class="delta"><b>+1.5%</b> acc · <b>−15%</b> length</div>
+      <p>Found where the model's reasoning broke, trained a reward model that scores chain-of-thought, and combined it with a correctness reward and a length penalty.</p>
+    </div>
+    <div class="row">
+      <div><span class="where">ByteDance · navigation AI agent</span><h3>Evaluation set, then a multi-agent redesign</h3></div>
+      <div class="delta">acc <b>~60% → ~78%</b></div>
+      <p>Built the eval set and scoring rules that located the failures, then replaced a slow ReAct loop with an intent-driven multi-agent workflow.</p>
+    </div>
+    <div class="row">
+      <div><span class="where">iFlytek · mid-training</span><h3>~3B-token domain corpus from real business data</h3></div>
+      <div class="delta"><b>+2%</b> avg downstream</div>
+      <p>Rule-based plus ML filtering to cover every problem scenario the models served.</p>
+    </div>
+    <div class="row">
+      <div><span class="where">ByteDance · distillation</span><h3>3,000+ distilled dialogues → Qwen2.5-3B with function calling</h3></div>
+      <div class="delta">multi-model → <b>one 3B model</b></div>
+      <p>Replaced a chain of models with a single fine-tuned small model.</p>
+    </div>
+    <div class="row">
+      <div><span class="where">Baidu · virtual companion product</span><h3>Persona-driven dialogue data: 7,000+ synthesized human-like chats</h3></div>
+      <div class="delta">wins <b>80%</b> of pairwise comparisons</div>
+      <p>Designed persona-driven dialogue strategies and synthesized the training set; the new model beat the previous version in 80% of side-by-side comparisons.</p>
+    </div>
+    <div class="row">
+      <div><span class="where">AI safety research · JMedEthicBench</span><h3>Multi-turn medical-ethics safety benchmark for LLMs</h3></div>
+      <div class="delta"><b>2,345</b> samples · <b>5</b> LLMs</div>
+      <p>Led the benchmark build: guideline-aligned Japanese medical dialogues generated with five LLMs, plus a multi-agent system that discovers jailbreaks. Published as arXiv:2601.01627.</p>
+    </div>
+    <div class="row">
+      <div><span class="where">KONE · maintenance scheduling</span><h3>Integer-programming model that plans a year of elevator maintenance and evens out technicians' days</h3></div>
+      <div class="delta">near-optimal in <b>1 min</b> · within <b>0.4%</b></div>
+      <p>Two objectives in Gurobi: shrink the gap between the busiest and quietest day, and cut the number of site trips. Constraints cover holidays, a visit at least every 14 days, first-visit windows and a cap of 48 elevators a day.</p>
+    </div>
+    <div class="row">
+      <div><span class="where">Code-agent team · current role</span><h3>Editable slide generation from an agent skill</h3></div>
+      <div class="delta"><b>−21%</b> tokens · <b>+10%</b> usable</div>
+      <p>Moved generation to an intermediate representation converted to OOXML, then restructured it into a workflow (+40% high-quality rate).</p>
+    </div>
+  </div>
+</section>
+
+<section id="grpo" aria-labelledby="case-h">
+  <h2 id="case-h">Open training run</h2>
+  <article class="case">
+    <h3>Full-parameter GRPO on Qwen2.5-7B-Instruct for biomedical relation extraction</h3>
+    <p>Task: label chemical–protein relations in ChemProt. Two rewards: correct label and correct output format. The model learned the format within about 30 steps, label reward kept climbing, and answers got shorter as it stopped over-explaining.</p>
+    <div class="charts">
+      <figure>
+        <svg id="c-reward" viewBox="0 0 320 170" role="img" aria-label="Label-accuracy reward rises from 0.32 at step 6 to about 1.64 at step 516"></svg>
+        <figcaption>Label-accuracy reward · <b>0.32 → 1.64</b></figcaption>
+      </figure>
+      <figure>
+        <svg id="c-len" viewBox="0 0 320 170" role="img" aria-label="Mean completion length falls from 244 tokens at step 6 to about 112 tokens at step 516"></svg>
+        <figcaption>Mean completion length (tokens) · <b>244 → 112</b></figcaption>
+      </figure>
+    </div>
+    <div class="specs">
+      <span class="chip">8× H100</span><span class="chip">DeepSpeed ZeRO-3</span><span class="chip">TRL GRPOTrainer</span><span class="chip">521 steps</span><span class="chip">lr 1e-6</span><span class="chip">8 generations / prompt</span>
+    </div>
+    <p class="small">Curves are averaged into 52 bins from the logged history. <a href="https://forge.coreweave.com/wandb/zirui010925-no/r1-re-chemprot/runs/o7vxr4dh">Full public W&amp;B log</a> · <a href="https://huggingface.co/RAy11mn/qwen_decision">LoRA adapter on Hugging Face</a></p>
+  </article>
+</section>
+
+<section aria-labelledby="xp-h">
+  <h2 id="xp-h">Experience</h2>
+  <div class="xp">
+    <div class="job">
+      <span class="when">Jul 2026 – now</span>
+      <div><h3>NLP Algorithm Engineer, code-agent strategy · major tech company</h3>
+      <ul><li>Own an agent skill that generates natively editable PowerPoint decks.</li></ul></div>
+    </div>
+    <div class="job">
+      <span class="when">Dec 2025 – Mar 2026</span>
+      <div><h3>LLM Algorithm Intern · iFlytek AI Research Institute</h3>
+      <ul><li>Mid-training data and RL for an AI homework-grading model.</li></ul></div>
+    </div>
+    <div class="job">
+      <span class="when">Jul 2025 – Dec 2025</span>
+      <div><h3>Agent Algorithm Intern · ByteDance</h3>
+      <ul><li>Built and evaluated an AI navigation agent system; distillation and SFT.</li></ul></div>
+    </div>
+    <div class="job">
+      <span class="when">Apr 2025 – Jul 2025</span>
+      <div><h3>Agent Engineering Intern · Baidu</h3>
+      <ul><li>Agent evaluation, data construction and tool integration for a virtual companion product.</li>
+      <li>Built a multi-dimensional benchmark to choose vision models for image–text chat and sticker understanding.</li>
+      <li>Built an MCP server with FastMCP that gives the product text-to-image and other creative tools.</li></ul></div>
+    </div>
+    <div class="job">
+      <span class="when">Aug 2024 – Apr 2025</span>
+      <div><h3>Algorithm Engineer Intern · KONE</h3>
+      <ul><li>Built a mixed-integer model in Gurobi that plans a full year of elevator maintenance visits for field technicians.</li>
+      <li>Balanced daily workload so technicians get steady days instead of overloaded ones, while every elevator keeps its 14-day service interval.</li></ul></div>
+    </div>
+    <div class="job">
+      <span class="when">2019 – 2026</span>
+      <div><h3>BS &amp; MS Computer Science · Hohai University</h3>
+      <ul><li>Led JMedEthicBench, a medical-ethics safety benchmark for LLMs (arXiv:2601.01627).</li></ul></div>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="do-h">
+  <h2 id="do-h">What I can do for you</h2>
+  <div class="cols">
+    <div><h3>Fine-tune a model</h3><p>SFT, LoRA/QLoRA or distillation for your domain, on Qwen, Llama or Mistral.</p></div>
+    <div><h3>Train with preferences or RL</h3><p>DPO, GRPO and reward models, with control over length and format.</p></div>
+    <div><h3>Prove it works</h3><p>Held-out test sets, benchmarks, leakage checks and honest error analysis.</p></div>
+    <div><h3>Fix the data</h3><p>Corpus building, filtering, synthetic data and quality checks.</p></div>
+    <div><h3>Build and evaluate agents</h3><p>Multi-agent workflows, tool calling and MCP servers, with an eval set that shows whether they work.</p></div>
+    <div><h3>Optimize schedules and operations</h3><p>Mathematical optimization for rostering and resource planning, with people's constraints built in.</p></div>
+  </div>
+  <p class="small" style="margin-top:22px">Python · PyTorch · Hugging Face Transformers / TRL / PEFT · DeepSpeed · veRL · vLLM · MCP / FastMCP · Gurobi / integer programming · scikit-learn · pandas · SQL</p>
+</section>
+
+<footer>
+  <p>Have a model that needs to get better at one thing? Send me the task and the metric you care about, and I'll reply with a plan and an estimate.</p>
+  <div class="cta"><a class="btn primary" href="https://www.upwork.com/freelancers/~015a8fe6ea6c76725c">Contact me on Upwork</a></div>
+  <span class="small">Async-friendly from Beijing (UTC+8).</span>
+</footer>
+
+</main>
+<script>
+const D=[[6,0.322,244],[16,0.563,240],[26,0.959,232],[36,0.963,215],[46,1.009,214],[56,1.016,212],[66,1.266,174],[76,1.262,142],[86,1.269,153],[96,1.356,197],[106,1.5,203],[116,1.366,204],[126,1.441,220],[136,1.431,209],[146,1.469,189],[156,1.509,176],[166,1.509,154],[176,1.563,149],[186,1.394,139],[196,1.494,131],[206,1.297,117],[216,1.478,114],[226,1.509,102],[236,1.484,116],[246,1.488,121],[256,1.591,124],[266,1.563,125],[276,1.563,133],[286,1.563,120],[296,1.541,120],[306,1.65,113],[316,1.572,113],[326,1.659,116],[336,1.697,111],[346,1.566,119],[356,1.647,119],[366,1.494,123],[376,1.547,120],[386,1.525,114],[396,1.622,119],[406,1.566,117],[416,1.666,117],[426,1.431,121],[436,1.488,116],[446,1.712,120],[456,1.844,115],[466,1.656,114],[476,1.625,116],[486,1.703,113],[496,1.609,116],[506,1.734,111],[516,1.639,112]];
+function chart(id,col,yMin,yMax,ticks,fmt){
+  const svg=document.getElementById(id),NS="http://www.w3.org/2000/svg";
+  const L=34,R=312,T=10,B=146,xMax=521;
+  const x=s=>L+(s/xMax)*(R-L), y=v=>B-((v-yMin)/(yMax-yMin))*(B-T);
+  const el=(n,a)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);svg.appendChild(e);return e};
+  ticks.forEach(t=>{el("line",{x1:L,x2:R,y1:y(t),y2:y(t),stroke:"var(--rule)","stroke-width":1});
+    const tx=el("text",{x:L-6,y:y(t)+4,"text-anchor":"end","font-size":10.5,"font-family":"var(--mono)",fill:"var(--muted)"});tx.textContent=fmt(t);});
+  [0,250,500].forEach(s=>{const tx=el("text",{x:x(s),y:B+16,"text-anchor":"middle","font-size":10.5,"font-family":"var(--mono)",fill:"var(--muted)"});tx.textContent=s===0?"step 0":s;});
+  const pts=D.map(r=>[x(r[0]),y(r[col])]);
+  const d=pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ");
+  el("path",{d:d+` L${pts[pts.length-1][0].toFixed(1)} ${B} L${pts[0][0].toFixed(1)} ${B} Z`,fill:"var(--accent-soft)",opacity:.8});
+  const line=el("path",{d,fill:"none",stroke:"var(--accent)","stroke-width":2.2,"stroke-linejoin":"round","stroke-linecap":"round",class:"line"});
+  try{line.style.setProperty("--len",Math.ceil(line.getTotalLength()))}catch(e){}
+  const last=pts[pts.length-1];el("circle",{cx:last[0],cy:last[1],r:3.5,fill:"var(--accent)"});
+}
+chart("c-reward",1,0,2,[0,0.5,1,1.5,2],t=>t.toFixed(1));
+chart("c-len",2,80,260,[100,150,200,250],t=>t);
+</script>
+</body>
+</html>
